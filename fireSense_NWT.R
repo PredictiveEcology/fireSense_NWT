@@ -24,7 +24,7 @@ defineModule(sim, list(
     defineParameter(name = ".runInitialTime", class = "numeric", default = start(sim),
                     desc = "when to start this module? By default, the start
                             time of the simulation."),
-    defineParameter(name = ".runInterval", class = "numeric", default = NA, 
+    defineParameter(name = ".runInterval", class = "numeric", default = 1, 
                     desc = "optional. Interval between two runs of this module,
                             expressed in units of simulation time."),
     defineParameter(name = ".saveInitialTime", class = "numeric", default = NA, 
@@ -54,9 +54,9 @@ defineModule(sim, list(
   ),
   outputObjects = rbind(
     createsOutput(
-      objectName = "loci",
+      objectName = "spreadState",
       objectClass = "numeric",
-      desc = "Numeric vector describing pixels where to start fires. These are pixel IDs."
+      desc = "data.table describing the current state of burning pixels."
     )
   )
 ))
@@ -119,7 +119,13 @@ predict <- function(sim)
   rm(ignitionProb)
   
   ## Escape
-  sim[["loci"]] <- ignited[mod[["escapeProb"]][!isNA][ignited] > runif(length(ignited))]
+  loci <- ignited[mod[["escapeProb"]][!isNA][ignited] > runif(length(ignited))]
+  
+  sim[["spreadState"]] <- data.table(
+    initialPixels = loci,
+    pixels = loci,
+    state = "activeSource"
+  )
   
   if (!is.na(P(sim)$.runInterval))
     sim <- scheduleEvent(sim, currentTime + P(sim)$.runInterval, moduleName, "predict")
