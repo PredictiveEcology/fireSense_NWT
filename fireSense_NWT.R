@@ -121,11 +121,22 @@ predict <- function(sim)
   ## Escape
   loci <- ignited[mod[["escapeProb"]][!isNA][ignited] > runif(length(ignited))]
   
-  sim[["spreadState"]] <- data.table(
-    initialPixels = loci,
-    pixels = loci,
-    state = "activeSource"
-  )
+  if (length(loci) > 0)
+  {
+    sim[["spreadState"]] <- data.table(
+      initialPixels = loci,
+      pixels = loci,
+      state = "activeSource"
+    )
+  }
+  else
+  {
+    sim[["spreadState"]] <- data.table(
+      initialPixels = integer(),
+      pixels = integer(),
+      state = character()
+    )
+  }
   
   if (!is.na(P(sim)$.runInterval))
     sim <- scheduleEvent(sim, currentTime + P(sim)$.runInterval, moduleName, "predict")
