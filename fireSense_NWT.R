@@ -119,24 +119,33 @@ predict <- function(sim)
   rm(ignitionProb)
   
   ## Escape
-  loci <- ignited[mod[["escapeProb"]][!isNA][ignited] > runif(length(ignited))]
+  adjacent <- SpaDES.tools::adj(
+    x = mod[["escapeProb"]],
+    cells = ignited,
+    directions = 8,
+    returnDT = TRUE
+  )
   
-  if (length(loci) > 0)
+  if (is.matrix(adjacent))
+    adjacent <- as.data.table(adjacent)
+  
+  n_ngb <- adjacent[, .N, by = "from"][["N"]]
+  
+  for (i in seq_along(ignited))
   {
-    sim[["spreadState"]] <- data.table(
-      initialPixels = loci,
-      pixels = loci,
-      state = "activeSource"
-    )
+    px_id <- ignited[i]
+    ngb <- adjacent[from == px_id, to]
+    mod[["escapeProb"]][ngb] <-
+      1 - (1 - mod[["escapeProb"]][ngb])^(1 / n_ngb[i])
   }
-  else
-  {
-    sim[["spreadState"]] <- data.table(
-      initialPixels = integer(),
-      pixels = integer(),
-      state = character()
-    )
-  }
+
+  sim$spreadState <- SpaDES.tools::spread2(
+    landscape = mod[["escapeProb"]],
+    start = ignited,
+    iterations = 1,
+    spreadProb = mod[["escapeProb"]],
+    asRaster = FALSE
+  )
   
   if (!is.na(P(sim)$.runInterval))
     sim <- scheduleEvent(sim, currentTime + P(sim)$.runInterval, moduleName, "predict")
