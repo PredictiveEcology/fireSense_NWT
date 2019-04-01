@@ -105,47 +105,56 @@ predict <- function(sim)
       sim[["escapeProb"]]
   
   ## Ignite
-  ignitionProb <- mod[["ignitionProb"]][]
-  isNA <- is.na(ignitionProb)
-  ignitionProb <- ignitionProb[!isNA]
-    
-  ignited <- which(
+  notNA <- which(!is.na(mod[["ignitionProb"]][]))
+  ignitionProb <- mod[["ignitionProb"]][notNA]
+  
+  ignited <- notNA[which(
     rbinom(n = length(ignitionProb),
            size = 1,
            prob = pmin(ignitionProb, 1)
     ) > 0
-  )
+  )]
   
   rm(ignitionProb)
   
-  ## Escape
-  adjacent <- SpaDES.tools::adj(
-    x = mod[["escapeProb"]],
-    cells = ignited,
-    directions = 8,
-    returnDT = TRUE
-  )
-  
-  if (is.matrix(adjacent))
-    adjacent <- as.data.table(adjacent)
-  
-  n_ngb <- adjacent[, .N, by = "from"][["N"]]
-  
-  for (i in seq_along(ignited))
+  if (length(ignited) > 0L)
   {
-    px_id <- ignited[i]
-    ngb <- adjacent[from == px_id, to]
-    mod[["escapeProb"]][ngb] <-
-      1 - (1 - mod[["escapeProb"]][ngb])^(1 / n_ngb[i])
+    ## Escape
+    adjacent <- SpaDES.tools::adj(
+      x = mod[["escapeProb"]],
+      cells = ignited,
+      directions = 8,
+      returnDT = TRUE
+    )
+    
+    if (is.matrix(adjacent))
+      adjacent <- as.data.table(adjacent)
+    
+    from <- unique(adjacent, by = "from")
+    from[, `:=` (probEscape = mod[["escapeProb"]][from], to = NULL)]
+    
+    # Update probEscape to get p0
+    p0 <- with(
+      from[adjacent, on = "from"][!is.na(probEscape)][
+        , 
+        probEscape := (1 - (1 - probEscape)^(1 / .N)),
+        by = "from"
+        ],
+      {
+        p0 <- mod[["escapeProb"]]
+        p0[to] <- probEscape
+        p0
+      }
+    )
+    
+    sim$spreadState <- SpaDES.tools::spread2(
+      landscape = mod[["escapeProb"]],
+      start = ignited,
+      iterations = 1,
+      spreadProb = p0,
+      asRaster = FALSE
+    )
   }
-
-  sim$spreadState <- SpaDES.tools::spread2(
-    landscape = mod[["escapeProb"]],
-    start = ignited,
-    iterations = 1,
-    spreadProb = mod[["escapeProb"]],
-    asRaster = FALSE
-  )
   
   if (!is.na(P(sim)$.runInterval))
     sim <- scheduleEvent(sim, currentTime + P(sim)$.runInterval, moduleName, "predict")
