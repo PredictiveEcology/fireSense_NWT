@@ -42,14 +42,16 @@ defineModule(sim, list(
       objectClass = "RasterLayer",
       sourceURL = NA_character_,
       desc = "A RasterLayer or RasterStack (time series) describing spatial
-              variations in ignition probabilities."
+              variations in ignition probabilities. The name of the expected 
+              input might also be fireSense_FrequencyPredicted"
     ),
     expectsInput(
       objectName = "escapeProb",
       objectClass = "RasterLayer",
       sourceURL = NA_character_,
       desc = "A RasterLayer or RasterStack (time series) describing spatial
-              variations in escape probabilities."
+              variations in escape probabilities. The name of the expected 
+              input might also be fireSense_EscapePredicted"
     )
   ),
   outputObjects = rbind(
@@ -90,20 +92,35 @@ predict <- function(sim)
 {
   moduleName <- current(sim)$moduleName
   currentTime <- time(sim, timeunit(sim))
-  
   ## Mapping
   mod[["ignitionProb"]] <- 
     if (!is.null(P(sim)[["mapping"]][["ignitionProb"]])) 
       sim[[P(sim)[["mapping"]][["ignitionProb"]]]] 
     else
-      sim[["ignitionProb"]]
+      if (!is.null(sim[["ignitionProb"]])){
+        sim[["ignitionProb"]]
+      } else {
+        if (!is.null(sim[["fireSense_FrequencyPredicted"]])){
+          sim[["fireSense_FrequencyPredicted"]]
+        } else {
+          stop("Neither `fireSense_EscapePredicted` nor `escapeProb` were found. Please provide one of these")
+        }        
+      }
   
   mod[["escapeProb"]] <-
     if (!is.null(P(sim)[["mapping"]][["escapeProb"]]))
       sim[[P(sim)[["mapping"]][["escapeProb"]]]]
     else
-      sim[["escapeProb"]]
-  
+      if (!is.null(sim[["escapeProb"]])){
+        sim[["escapeProb"]]
+      } else {
+        if (!is.null(sim[["fireSense_EscapePredicted"]])){
+          sim[["fireSense_EscapePredicted"]]
+        } else {
+          stop("Neither `fireSense_EscapePredicted` nor `escapeProb` were found. Please provide one of these")
+        }        
+      }
+      
   ## Ignite
   notNA <- which(!is.na(mod[["ignitionProb"]][]))
   ignitionProb <- mod[["ignitionProb"]][notNA]
@@ -146,7 +163,6 @@ predict <- function(sim)
         p0
       }
     )
-    
     sim$spreadState <- SpaDES.tools::spread2(
       landscape = mod[["escapeProb"]],
       start = ignited,
@@ -161,4 +177,3 @@ predict <- function(sim)
   
   invisible(sim)
 }
-
