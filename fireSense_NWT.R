@@ -103,7 +103,7 @@ predict <- function(sim)
         if (!is.null(sim[["fireSense_FrequencyPredicted"]])){
           sim[["fireSense_FrequencyPredicted"]]
         } else {
-          stop("Neither `fireSense_EscapePredicted` nor `escapeProb` were found. Please provide one of these")
+          stop("Neither `fireSense_FrequencyPredicted` nor `ignitionProb` were found. Please provide one of these")
         }        
       }
   
