@@ -103,7 +103,12 @@ predict <- function(sim)
         if (!is.null(sim[["fireSense_FrequencyPredicted"]])){
           sim[["fireSense_FrequencyPredicted"]]
         } else {
-          stop("Neither `fireSense_FrequencyPredicted` nor `ignitionProb` were found. Please provide one of these")
+          if (!is.null(sim[["fireSense_IgnitionPredicted"]])){
+            sim[["fireSense_IgnitionPredicted"]]
+          } else {
+            stop("Neither `fireSense_FrequencyPredicted` (i.e. being deprecated), `fireSense_IgnitionPredicted` nor 
+                 `ignitionProb` were found. Please provide one of these")
+          }
         }        
       }
   
